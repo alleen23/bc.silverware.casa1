@@ -19,15 +19,14 @@
 </head>
 <body class="bg-white text-zinc-900 scroll-smooth">
 
-    <!-- VIDEO INTRO (Kept as you liked) -->
+    <!-- VIDEO INTRO -->
     <div id="intro-screen" class="fixed inset-0 z-[9999] flex items-center justify-center hero-bg">
         <div class="relative w-full h-full flex flex-col items-center justify-center px-4">
             <video id="intro-video" class="absolute inset-0 w-full h-full object-cover" autoplay loop muted playsinline>
                 <source src="https://jumpshare.com/s/R41YeysQrOLNTwolhgvO" type="video/mp4">
             </video>
 
-            <!-- Framed Content (Kept as requested) -->
-            <div class="relative z-10 text-center bg-black/40 backdrop-blur-md px-10 py-12 rounded-3xl border border-white/30 shadow-2xl">
+            <div class="relative z-10 text-center bg-black/40 backdrop-blur-md px-10 py-12 rounded-3xl border border-white/30">
                 <img src="https://i.postimg.cc/xXLWm86w/Gemini-Generated-Image-2026-04-03-at-14-33-12.png" 
                      alt="Brillance Châtre" class="w-52 h-52 md:w-64 md:h-64 mx-auto rounded-full object-contain border-8 border-white shadow-2xl mb-8">
 
@@ -121,8 +120,30 @@
         </div>
     </div>
 
+    <!-- CART MODAL -->
+    <div id="cart-modal" class="hidden fixed inset-0 bg-black/70 z-[200] flex items-end md:items-center justify-center">
+        <div class="bg-white w-full max-w-lg rounded-t-3xl md:rounded-3xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 class="text-2xl font-semibold">Votre Panier</h2>
+                <button onclick="hideCart()" class="text-3xl text-zinc-400">×</button>
+            </div>
+            <div id="cart-items" class="flex-1 p-6 overflow-auto space-y-6"></div>
+            <div class="p-6 border-t">
+                <div class="flex justify-between text-xl font-semibold mb-6">
+                    <span>Total</span>
+                    <span id="cart-total" class="text-zinc-800">0 DH</span>
+                </div>
+                <button onclick="sendOrderToWhatsApp()" 
+                        class="w-full bg-green-600 hover:bg-green-700 text-white py-5 rounded-3xl font-semibold flex items-center justify-center gap-3 text-lg">
+                    <i class="fa-brands fa-whatsapp text-2xl"></i>
+                    PAYER VIA WHATSAPP
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        let products = [
+        let products = [ /* your products */ 
             {id:1, name:"Bracelet rivière argent rhodié oxydes de zirconium", price:350, desc:"Size 4:4", img:"https://i.postimg.cc/Wzmm7vbC/0E0060B0-2A87-45AF-8FFF-58E60A00BE89.jpg"},
             {id:2, name:"Bracelet « Trio éclat » argent 925 zircon baguette", price:220, desc:"", img:"https://i.postimg.cc/mk33SsgW/2BF28342-EA5F-44C7-988E-55A35B61AE3E.jpg"},
             {id:3, name:"Éclat Royal – Bracelet en argent 925 avec pierre carrée halo", price:189, desc:"", img:"https://i.postimg.cc/ZnPPLSK1/9305FEE1-21B8-48AE-BDDD-6A79069744F6.jpg"},
@@ -191,12 +212,90 @@
             if (existing) existing.quantity = (existing.quantity || 1) + 1;
             else cart.push({...product, quantity: 1});
             updateCartCount();
-            alert("✅ " + product.name + " ajouté au panier !");
         }
 
         function updateCartCount() {
             const count = cart.reduce((a, c) => a + (c.quantity || 1), 0);
             document.getElementById('cart-count').textContent = count;
+        }
+
+        function showCart() {
+            document.getElementById('cart-modal').classList.remove('hidden');
+            renderCart();
+        }
+
+        function hideCart() {
+            document.getElementById('cart-modal').classList.add('hidden');
+        }
+
+        function renderCart() {
+            let html = '', total = 0;
+            const container = document.getElementById('cart-items');
+
+            if (cart.length === 0) {
+                container.innerHTML = `<p class="text-center py-12 text-zinc-400">Votre panier est vide</p>`;
+                document.getElementById('cart-total').textContent = '0 DH';
+                return;
+            }
+
+            cart.forEach((item, i) => {
+                const itemTotal = item.price * (item.quantity || 1);
+                total += itemTotal;
+                html += `
+                <div class="flex gap-4">
+                    <img src="${item.img}" class="w-20 h-20 object-cover rounded-2xl">
+                    <div class="flex-1">
+                        <div class="font-medium">${item.name}</div>
+                        <div class="text-sm text-zinc-500">${itemTotal} DH</div>
+                        <div class="flex gap-4 mt-2">
+                            <button onclick="changeQty(${i}, -1)" class="px-3 border">-</button>
+                            <span>${item.quantity || 1}</span>
+                            <button onclick="changeQty(${i}, 1)" class="px-3 border">+</button>
+                            <button onclick="removeItem(${i})" class="ml-auto text-red-500 text-sm">Supprimer</button>
+                        </div>
+                    </div>
+                </div>`;
+            });
+
+            container.innerHTML = html;
+            document.getElementById('cart-total').textContent = total + ' DH';
+        }
+
+        function changeQty(i, delta) {
+            cart[i].quantity = Math.max(1, (cart[i].quantity || 1) + delta);
+            renderCart();
+            updateCartCount();
+        }
+
+        function removeItem(i) {
+            cart.splice(i, 1);
+            renderCart();
+            updateCartCount();
+        }
+
+        function sendOrderToWhatsApp() {
+            if (cart.length === 0) return;
+
+            let message = "🛍️ *Nouvelle Commande - Brillance Châtre*%0A%0A";
+            let total = 0;
+
+            cart.forEach(item => {
+                const itemTotal = item.price * (item.quantity || 1);
+                total += itemTotal;
+                message += `*${item.name}*%0A`;
+                message += `Quantité: ${item.quantity || 1}%0A`;
+                message += `Prix: ${itemTotal} DH%0A%0A`;
+            });
+
+            message += `*Total: ${total} DH*%0A%0A`;
+            message += "Veuillez confirmer ma commande. Merci !";
+
+            const phone = "212720114319";
+            window.open(`https://wa.me/${phone}?text=${message}`, '_blank');
+
+            hideCart();
+            cart = [];
+            updateCartCount();
         }
 
         function toggleMobileMenu() {
@@ -210,10 +309,6 @@
 
         function showContact() {
             alert("📍 Brillance Châtre\nCasablanca, Maroc\nWhatsApp: +212 720 114 319");
-        }
-
-        function showCart() {
-            alert("🛍️ Panier ouvert\nTotal articles : " + cart.length);
         }
 
         window.onload = () => {
